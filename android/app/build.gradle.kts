@@ -5,6 +5,7 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 val keystoreProperties = Properties()
@@ -36,8 +37,8 @@ android {
         applicationId = "com.noticiaslat.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 13
-        versionName = "1.0.13"
+        versionCode = 16
+        versionName = "1.0.16"
     }
 
     signingConfigs {

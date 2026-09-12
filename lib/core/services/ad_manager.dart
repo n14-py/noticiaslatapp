@@ -4,24 +4,30 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:noticias_lat/core/services/premium_manager.dart';
 
 class AdManager {
-  // 🆔 Tus IDs Oficiales de AdMob
+  //   Tus IDs Oficiales de AdMob
   static const String bannerAdUnitId = 'ca-app-pub-5461370198299696/8176816601';
   static const String interstitialAdUnitId = 'ca-app-pub-5461370198299696/7578050809';
-  static const String rewardedAdUnitId = 'ca-app-pub-5461370198299696/3638805797';
+  
+  // Separamos los IDs de recompensados
+  static const String rewardedAdUnitIdPremium = 'ca-app-pub-5461370198299696/3638805797';
+  static const String rewardedAdUnitIdIA = 'ca-app-pub-5461370198299696/9064542151'; 
 
   static InterstitialAd? _interstitialAd;
-  static RewardedAd? _rewardedAd;
+  static RewardedAd? _rewardedAdPremium;
+  static RewardedAd? _rewardedAdIA;
 
-  // 1️⃣ ANUNCIO BANNER (Sin "context" para no romper tus otras pantallas)
+  // Contador para las noticias leídas
+  static int _noticiasLeidas = 0;
+
+  // 1  ANUNCIO BANNER (Sin "context" para no romper tus otras pantallas)
   static Widget getBannerAdWidget() {
     if (PremiumManager.isPremium()) return const SizedBox.shrink();
     return const AdaptiveBannerAdWidget();
   }
 
-  // 2️⃣ ANUNCIO INTERSTICIAL (Pantalla Completa)
+  // 2  ANUNCIO INTERSTICIAL (Pantalla Completa)
   static void loadInterstitial() {
     if (PremiumManager.isPremium()) return;
-
     InterstitialAd.load(
       adUnitId: interstitialAdUnitId,
       request: const AdRequest(),
@@ -38,11 +44,10 @@ class AdManager {
 
   static void showInterstitial() {
     if (PremiumManager.isPremium() || _interstitialAd == null) return;
-
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
-        loadInterstitial(); // Recarga automática para la siguiente vez
+        loadInterstitial(); // Recarga autom tica para la siguiente vez
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
@@ -53,18 +58,50 @@ class AdManager {
     _interstitialAd = null;
   }
 
-  // 3️⃣ ANUNCIO RECOMPENSADO (Videos para créditos Premium)
+  // Nuevo método: Intersticial cada 3 noticias
+  static void mostrarIntersticialCada3Noticias() {
+    _noticiasLeidas++;
+    if (_noticiasLeidas % 3 == 0) {
+      showInterstitial();
+    }
+  }
+
+  // Nuevo método: Intersticial de bienvenida (al abrir la app o volver a entrar)
+  static void mostrarIntersticialDeBienvenida() {
+    showInterstitial();
+  }
+
+  // 3  ANUNCIO RECOMPENSADO (Videos para cr ditos Premium e IA)
   static void loadRewarded() {
+    _loadRewardedPremium();
+    _loadRewardedIA();
+  }
+
+  static void _loadRewardedPremium() {
     RewardedAd.load(
-      adUnitId: rewardedAdUnitId,
+      adUnitId: rewardedAdUnitIdPremium,
       request: const AdRequest(),
-      // ✅ CORRECCIÓN: Aquí es estrictamente "rewardedAdLoadCallback"
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
-          _rewardedAd = ad;
+          _rewardedAdPremium = ad;
         },
         onAdFailedToLoad: (error) {
-          _rewardedAd = null;
+          _rewardedAdPremium = null;
+        },
+      ),
+    );
+  }
+
+  static void _loadRewardedIA() {
+    RewardedAd.load(
+      adUnitId: rewardedAdUnitIdIA,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          _rewardedAdIA = ad;
+        },
+        onAdFailedToLoad: (error) {
+          _rewardedAdIA = null;
         },
       ),
     );
@@ -73,35 +110,51 @@ class AdManager {
   static void showRewarded({
     required Function onRewardEarned,
     required Function onAdClosed,
+    bool isForIA = false, // Magia: Si no le enviamos nada, asume que es el Premium para no romper tu código
   }) {
-    if (_rewardedAd == null) {
-      onAdClosed(); // Si falla la carga, continúa el flujo para no trabar al usuario
+    RewardedAd? adToShow = isForIA ? _rewardedAdIA : _rewardedAdPremium;
+
+    if (adToShow == null) {
+      onAdClosed(); // Si falla la carga, contin a el flujo para no trabar al usuario
       return;
     }
-
-    _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+    
+    adToShow.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
-        loadRewarded(); // Recarga el video
+        if (isForIA) {
+          _loadRewardedIA(); // Recarga el video de IA
+        } else {
+          _loadRewardedPremium(); // Recarga el video Premium
+        }
         onAdClosed();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
-        loadRewarded();
+        if (isForIA) {
+          _loadRewardedIA();
+        } else {
+          _loadRewardedPremium();
+        }
         onAdClosed();
       },
     );
-
-    _rewardedAd!.show(
+    
+    adToShow.show(
       onUserEarnedReward: (ad, reward) {
-        onRewardEarned(); // Da los créditos correspondientes
+        onRewardEarned(); // Da los cr ditos correspondientes
       },
     );
-    _rewardedAd = null;
+    
+    if (isForIA) {
+      _rewardedAdIA = null;
+    } else {
+      _rewardedAdPremium = null;
+    }
   }
 }
 
-// 🧱 COMPONENTE INTERNO: Controla de forma inteligente el tamaño y ciclo de vida del Banner
+// COMPONENTE INTERNO: Controla de forma inteligente el tama o y ciclo de vida del Banner
 class AdaptiveBannerAdWidget extends StatefulWidget {
   const AdaptiveBannerAdWidget({super.key});
 
@@ -117,19 +170,19 @@ class _AdaptiveBannerAdWidgetState extends State<AdaptiveBannerAdWidget> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Cargamos el anuncio de forma segura basándonos en las dimensiones de la pantalla actual
+    // Cargamos el anuncio de forma segura bas ndonos en las dimensiones de la pantalla actual
     if (_bannerAd == null) {
       _loadAdaptiveBanner();
     }
   }
 
   Future<void> _loadAdaptiveBanner() async {
-    // Calculamos de forma dinámica el ancho máximo de la pantalla actual del dispositivo
+    // Calculamos de forma din mica el ancho m ximo de la pantalla actual del dispositivo
     final int width = MediaQuery.sizeOf(context).width.truncate();
     
     final AnchoredAdaptiveBannerAdSize? size =
         await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);
-
+    
     if (size == null || !mounted) return;
 
     _bannerAd = BannerAd(
@@ -153,13 +206,12 @@ class _AdaptiveBannerAdWidgetState extends State<AdaptiveBannerAdWidget> {
         },
       ),
     );
-
     _bannerAd!.load();
   }
 
   @override
   void dispose() {
-    _bannerAd?.dispose(); // ⚠️ EVITA LAS SOLICITUDES DUPLICADAS AL DESTRUIR EL COMPONENTE
+    _bannerAd?.dispose(); //   EVITA LAS SOLICITUDES DUPLICADAS AL DESTRUIR EL COMPONENTE
     super.dispose();
   }
 
@@ -174,7 +226,7 @@ class _AdaptiveBannerAdWidgetState extends State<AdaptiveBannerAdWidget> {
         child: AdWidget(ad: _bannerAd!),
       );
     }
-    // Muestra un espacio vacío imperceptible mientras el banner termina de cargarse en segundo plano
+    // Muestra un espacio vac o imperceptible mientras el banner termina de cargarse en segundo plano
     return const SizedBox.shrink();
   }
 }

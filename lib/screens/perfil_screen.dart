@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:noticias_lat/core/theme/app_theme.dart';
 import 'package:noticias_lat/core/services/premium_manager.dart';
 import 'package:noticias_lat/core/services/ad_manager.dart';
+import 'package:noticias_lat/core/services/billing_manager.dart';
 
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
@@ -14,13 +15,13 @@ class PerfilScreen extends StatefulWidget {
 
 class _PerfilScreenState extends State<PerfilScreen> {
   // ==========================================
-  // ESTADOS DE CUENTA Y MONETIZACIÓN
+  // ESTADOS DE CUENTA Y MONETIZACI N
   // ==========================================
   bool _isPremium = false;
   int _anunciosVistos = 0;
   bool _isLoadingAd = false;
-  
-  // Selección de paquete para publicar (Visual)
+
+  // Selecci n de paquete para publicar (Visual)
   int _selectedPackage = 1;
 
   @override
@@ -37,7 +38,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   // ==========================================
-  // 🌐 ABRIR ENLACES LEGALES REALES
+  //   ABRIR ENLACES LEGALES REALES
   // ==========================================
   Future<void> _abrirEnlaceWeb(String url) async {
     final Uri uri = Uri.parse(url);
@@ -51,7 +52,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
   }
 
   // ==========================================
-  // LÓGICA DE RECOMPENSAS ADMOB
+  // L GICA DE RECOMPENSAS ADMOB
   // ==========================================
   void _verAnuncioParaPremium() {
     setState(() => _isLoadingAd = true);
@@ -85,59 +86,96 @@ class _PerfilScreenState extends State<PerfilScreen> {
               title: Text('Mi Perfil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: 1)),
             ),
           ),
-
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. ÁREA DE BIENVENIDA (Reemplaza al Login)
+                  // 1.  REA DE BIENVENIDA (Reemplaza al Login)
                   _buildWelcomeSection(),
                   const SizedBox(height: 24),
 
-                  // 2. TARJETA DE SUSCRIPCIÓN PREMIUM ($1.99/mes)
-                  const Text('Membresía', style: TextStyle(color: AppTheme.textMuted, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                  // 2. TARJETA DE SUSCRIPCI N PREMIUM ($1.99/mes)
+                  const Text('Membres a', style: TextStyle(color: AppTheme.textMuted, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                   const SizedBox(height: 10),
                   _buildPremiumSubscriptionCard(),
                   const SizedBox(height: 24),
 
-                  // 3. TIENDA DE PUBLICACIÓN DE NOTICIAS (Próximamente)
+                  // 3. TIENDA DE PUBLICACI N DE NOTICIAS (Pr ximamente)
                   const Text('Noticias.lat Publisher', style: TextStyle(color: AppTheme.textMuted, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                   const SizedBox(height: 10),
                   _buildPublishingStore(),
                   const SizedBox(height: 30),
 
-                  // 4. MENÚ DE LEGALES Y ENLACES REALES
-                  const Text('Legal e Información', style: TextStyle(color: AppTheme.textMuted, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                  // 4. MEN  DE LEGALES Y ENLACES REALES
+                  const Text('Legal e Informaci n', style: TextStyle(color: AppTheme.textMuted, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
                   const SizedBox(height: 10),
                   
                   _buildMenuOption(
                     icon: Icons.info_outline_rounded, 
                     title: 'Sobre Nosotros', 
-                    subtitle: 'Conoce la misión de Noticias.lat',
+                    subtitle: 'Conoce la misi n de Noticias.lat',
                     onTap: () => _abrirEnlaceWeb('https://noticias.lat/sobre-nosotros')
                   ),
                   _buildMenuOption(
                     icon: Icons.shield_rounded, 
-                    title: 'Política de Privacidad', 
-                    subtitle: 'Cómo protegemos tus datos',
+                    title: 'Pol tica de Privacidad', 
+                    subtitle: 'C mo protegemos tus datos',
                     onTap: () => _abrirEnlaceWeb('https://noticias.lat/politica-privacidad')
                   ),
                   _buildMenuOption(
                     icon: Icons.gavel_rounded, 
-                    title: 'Términos y Condiciones', 
+                    title: 'T rminos y Condiciones', 
                     subtitle: 'Reglas de uso de la plataforma',
                     onTap: () => _abrirEnlaceWeb('https://noticias.lat/terminos')
                   ),
                   _buildMenuOption(
                     icon: Icons.contact_support_rounded, 
-                    title: 'Contacto', 
-                    subtitle: 'Escríbenos si tienes dudas',
-                    onTap: () => _abrirEnlaceWeb('https://noticias.lat/contacto')
+                    title: 'Contacto y Soporte', 
+                    subtitle: 'Información del desarrollador',
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          backgroundColor: AppTheme.bgDark,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: const BorderSide(color: AppTheme.cardBorder),
+                          ),
+                          title: const Row(
+                            children: [
+                              Icon(Icons.contact_support_rounded, color: AppTheme.accentCyan),
+                              SizedBox(width: 10),
+                              Text('Contacto', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          content: const Text(
+                            'Puedes comunicarte con el desarrollador de este agregador de noticias a través de:\n\n'
+                            '📧 Correo: contactonoticiaslat@gmail.com\n'
+                            '📱 Teléfono: +595 976678432\n\n'
+                            'O visita nuestra página web de soporte.',
+                            style: TextStyle(color: Colors.white70, height: 1.5),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context); // Cierra el cuadro
+                                _abrirEnlaceWeb('https://noticias.lat/contacto'); // Abre la web
+                              },
+                              child: const Text('Ir a la Web', style: TextStyle(color: Colors.white54)),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cerrar', style: TextStyle(color: AppTheme.accentCyan, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                   ),
                   
-                  const SizedBox(height: 120), // Espacio para la barra de navegación flotante inferior
+                  const SizedBox(height: 120), // Espacio para la barra de navegaci n flotante inferior
                 ],
               ),
             ),
@@ -215,7 +253,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     children: [
                       Text(_isPremium ? 'PREMIUM ACTIVO' : 'Lector Premium', style: TextStyle(color: _isPremium ? AppTheme.accentCyan : Colors.white, fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 1)),
                       const SizedBox(height: 4),
-                      Text(_isPremium ? 'Disfruta sin límites' : 'Cero anuncios y 100% de funciones', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                      Text(_isPremium ? 'Disfruta sin l mites' : 'Cero anuncios y 100% de funciones', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -232,7 +270,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 children: [
                   Row(children: [Icon(Icons.check_circle_rounded, color: AppTheme.accentCyan, size: 18), SizedBox(width: 8), Text('0 Anuncios en toda la App', style: TextStyle(color: Colors.white, fontSize: 14))]),
                   SizedBox(height: 8),
-                  Row(children: [Icon(Icons.check_circle_rounded, color: AppTheme.accentCyan, size: 18), SizedBox(width: 8), Text('Resúmenes Inteligentes Ilimitados', style: TextStyle(color: Colors.white, fontSize: 14))]),
+                  Row(children: [Icon(Icons.check_circle_rounded, color: AppTheme.accentCyan, size: 18), SizedBox(width: 8), Text('Res menes Inteligentes Ilimitados', style: TextStyle(color: Colors.white, fontSize: 14))]),
                   SizedBox(height: 8),
                   Row(children: [Icon(Icons.check_circle_rounded, color: AppTheme.accentCyan, size: 18), SizedBox(width: 8), Text('Radio continua sin cortes', style: TextStyle(color: Colors.white, fontSize: 14))]),
                 ],
@@ -247,24 +285,33 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 children: [
                   SizedBox(
                     width: double.infinity, height: 50,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conectando con Google Play Billing...')));
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Conectando con Google Play...'))
+                        );
+                        // Llamamos al motor de pagos
+                        await BillingManager.comprarPremiumMensual();
                       },
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentCyan, foregroundColor: AppTheme.bgDark, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                      child: const Text('Suscribirse por \$1.99 / mes', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accentCyan, // Lo encendemos con el color principal de la app
+                        foregroundColor: AppTheme.bgDark, 
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                      ),
+                      icon: const Icon(Icons.workspace_premium_rounded),
+                      label: const Text('Suscribirse por \$1.99/mes', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                     ),
                   ),
                   const SizedBox(height: 16),
                   
-                  // Opción Gratuita (12 Horas por anuncios)
+                  // Opci n Gratuita (12 Horas por anuncios)
                   Row(
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Opción Gratuita (12 Horas)', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                            const Text('Opci n Gratuita (12 Horas)', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 4),
                             ClipRRect(borderRadius: BorderRadius.circular(10), child: LinearProgressIndicator(value: _anunciosVistos / 2.0, minHeight: 4, backgroundColor: Colors.white10, valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange))),
                           ],
@@ -309,7 +356,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     const SizedBox(width: 10),
                     const Text('Publica tus Noticias', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                     const Spacer(),
-                    // Etiqueta de "Próximamente" arriba a la derecha
+                    // Etiqueta de "Pr ximamente" arriba a la derecha
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
@@ -318,12 +365,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text('Usa nuestra plataforma global. Tu noticia se publicará en la Web, en la App, en Radio y se creará un video para YouTube.', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13, height: 1.4)),
+                Text('Usa nuestra plataforma global. Tu noticia se publicar  en la Web, en la App, en Radio y se crear  un video para YouTube.', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 13, height: 1.4)),
               ],
             ),
           ),
           
-          // LÓGICA DE SELECCIÓN DE PAQUETES (Solo visual por ahora)
+          // L GICA DE SELECCI N DE PAQUETES (Solo visual por ahora)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -337,8 +384,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
           ),
           const SizedBox(height: 20),
-
-          // BOTÓN DESHABILITADO (PRÓXIMAMENTE)
+          // BOT N DESHABILITADO (PR XIMAMENTE)
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.3), borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24))),
@@ -348,13 +394,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('¡Esta increíble función estará disponible en la próxima actualización!', style: TextStyle(color: Colors.white)),
+                      content: Text(' Esta incre ble funci n estar  disponible en la pr xima actualizaci n!', style: TextStyle(color: Colors.white)),
                       backgroundColor: Colors.orange,
                     )
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white24, // Color apagado para indicar que no está activo aún
+                  backgroundColor: Colors.white24, // Color apagado para indicar que no est  activo a n
                   foregroundColor: Colors.white, 
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
                 ),
@@ -386,7 +432,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
         child: Column(
           children: [
             if (isPopular)
-              Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: isSelected ? AppTheme.accentCyan : Colors.white24, borderRadius: BorderRadius.circular(10)), child: Text('MÁS VENDIDO', style: TextStyle(color: isSelected ? AppTheme.bgDark : Colors.white, fontSize: 8, fontWeight: FontWeight.bold))),
+              Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: isSelected ? AppTheme.accentCyan : Colors.white24, borderRadius: BorderRadius.circular(10)), child: Text('M S VENDIDO', style: TextStyle(color: isSelected ? AppTheme.bgDark : Colors.white, fontSize: 8, fontWeight: FontWeight.bold))),
             Icon(icon, color: isSelected ? AppTheme.accentCyan : Colors.white70, size: 28),
             const SizedBox(height: 12),
             Text(title, style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),

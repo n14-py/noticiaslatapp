@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "215759340133",
+    "project_id": "noticiaslat-4f609",
+    "storage_bucket": "noticiaslat-4f609.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:215759340133:android:f60ce7d334f344783c3c8c",
+        "android_client_info": {
+          "package_name": "com.noticiaslat.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAj35QZDHQ8wN1NI5SNe5gNWu7RSfc7nu4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

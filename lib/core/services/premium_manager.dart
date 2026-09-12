@@ -27,6 +27,14 @@ class PremiumManager {
     await _prefs.setInt('anuncios_vistos_hoy', 0);
   }
 
+// NUEVA FUNCIÓN: Para cuando pagan con tarjeta
+  static Future<void> activarPremiumSuscripcion() async {
+    // Le damos 30 días de Premium. (Google Play nos avisará cada mes para renovarlo)
+    int until = DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch;
+    await _prefs.setInt('premium_until', until);
+    await _prefs.setInt('anuncios_vistos_hoy', 0);
+  }
+
   static Future<int> registrarAnuncioVistoParaPremium() async {
     int vistos = (_prefs.getInt('anuncios_vistos_hoy') ?? 0) + 1;
     await _prefs.setInt('anuncios_vistos_hoy', vistos);

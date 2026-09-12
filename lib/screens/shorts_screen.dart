@@ -6,7 +6,8 @@ import 'dart:ui';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:noticias_lat/core/theme/app_theme.dart';
 import 'package:noticias_lat/widgets/short_video_player.dart';
-// --- IMPORTAMOS LOS SERVICIOS DE MONETIZACIÓN Y PREMIUM ---
+
+// --- IMPORTAMOS LOS SERVICIOS DE MONETIZACI N Y PREMIUM ---
 import 'package:noticias_lat/core/services/premium_manager.dart';
 import 'package:noticias_lat/core/services/ad_manager.dart';
 
@@ -25,18 +26,18 @@ class _ShortsScreenState extends State<ShortsScreen> {
   List shortsFiltrados = [];
   bool isLoading = true;
 
-  // Control de reproducción y monetización
+  // Control de reproducci n y monetizaci n
   int currentIndex = 0;
   int shortsVistos = 0; // Se incrementa cada vez que el usuario desliza
 
-  // Controladores de búsqueda y filtros
+  // Controladores de b squeda y filtros
   bool mostrarBuscador = false;
   String categoriaSeleccionada = 'todas';
   String searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   final PageController _pageController = PageController();
 
-  // Lista de categorías para el filtro superior
+  // Lista de categor as para el filtro superior
   final List<String> categorias = [
     'todas', 
     'politica', 
@@ -51,7 +52,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
   // Estado para la tarjeta de resumen IA flotante dentro del Short
   bool mostrarResumenIA = false;
   String resumenIAActual = '';
-  bool _isLiking = false; // Para la animación de Me Gusta
+  bool _isLiking = false; // Para la animaci n de Me Gusta
 
   @override
   void initState() {
@@ -67,13 +68,13 @@ class _ShortsScreenState extends State<ShortsScreen> {
   }
 
   // ========================================================
-  //   CARGAR SHORTS (CON CACHÉ JSON INSTANTÁNEO)
+  //   CARGAR SHORTS (CON CACH  JSON INSTANT NEO)
   // ========================================================
   Future<void> _cargarShorts() async {
     final prefs = await SharedPreferences.getInstance();
     final String? cachedData = prefs.getString('shorts_json_cache');
 
-    // 1. Si hay caché, cargamos AL INSTANTE
+    // 1. Si hay cach , cargamos AL INSTANTE
     if (cachedData != null) {
       final data = json.decode(cachedData);
       _procesarListaDeArticulos(data['articulos'] ?? []);
@@ -83,10 +84,12 @@ class _ShortsScreenState extends State<ShortsScreen> {
 
     // 2. Buscamos actualizaciones silenciosamente en segundo plano
     const url = 'https://api.noticias.lat/api/articles?sitio=noticias.lat&limite=100';
+    
     try {
       final response = await http.get(Uri.parse(url));
+
       if (response.statusCode == 200) {
-        // Guardamos el nuevo JSON en el celular para la próxima vez
+        // Guardamos el nuevo JSON en el celular para la pr xima vez
         prefs.setString('shorts_json_cache', response.body);
         
         final data = json.decode(response.body);
@@ -102,21 +105,23 @@ class _ShortsScreenState extends State<ShortsScreen> {
 
   void _procesarListaDeArticulos(List articulos) {
     if (!mounted) return;
+
     todosLosShorts = articulos.where((a) {
       final tieneVideo = a['videoUrl'] != null && a['videoUrl'].toString().isNotEmpty;
       final esShortLink = (a['enlaceOriginal'] ?? '').toString().contains('#short');
       return tieneVideo || esShortLink;
     }).toList();
+
     _aplicarFiltros();
   }
 
   // ========================================================
-  //  LÓGICA DE FILTRADO Y BÚSQUEDA
+  //  L GICA DE FILTRADO Y B SQUEDA
   // ========================================================
   void _aplicarFiltros() {
     setState(() {
       shortsFiltrados = todosLosShorts.where((short) {
-        // Filtrar por categoría
+        // Filtrar por categor a
         bool pasaCategoria = categoriaSeleccionada == 'todas' || 
                              short['categoria']?.toString().toLowerCase() == categoriaSeleccionada;
         
@@ -134,7 +139,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
   }
 
   // ========================================================
-  //  LÓGICA DE MONETIZACIÓN: SIN CRÉDITOS IA
+  //  L GICA DE MONETIZACI N: SIN CR DITOS IA
   // ========================================================
   void _mostrarDialogoSinCreditos() {
     showDialog(
@@ -150,11 +155,11 @@ class _ShortsScreenState extends State<ShortsScreen> {
           children: [
             Icon(Icons.bolt_rounded, color: Colors.orange, size: 32),
             SizedBox(width: 10),
-            Text('¡Sin Energía IA!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+            Text(' Sin Energ a IA!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
           ],
         ),
         content: const Text(
-          'Te has quedado sin usos de la Inteligencia Artificial.\n\n¿Quieres ver un video corto para recargar 5 usos inmediatamente y ver este resumen?',
+          'Te has quedado sin usos de la Inteligencia Artificial.\n\n Quieres ver un video corto para recargar 5 usos inmediatamente y ver este resumen?',
           style: TextStyle(color: AppTheme.textMuted, height: 1.5, fontSize: 15),
         ),
         actions: [
@@ -169,17 +174,17 @@ class _ShortsScreenState extends State<ShortsScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
             ),
             onPressed: () {
-              Navigator.pop(context); // Cerramos el diálogo
+              Navigator.pop(context); // Cerramos el di logo
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Cargando anuncio premium...', style: TextStyle(color: Colors.white)))
               );
               
-              // Llamamos al AdManager para mostrar el anuncio con recompensa
+              // Llamamos al AdManager para mostrar el anuncio con recompensa DE IA
               AdManager.showRewarded(
+                isForIA: true, // AQUÍ LE DECIMOS QUE USE EL ANUNCIO DE IA
                 onRewardEarned: () async {
-                  // Le damos los 5 créditos y lo contamos para el Premium
+                  // Le damos los 5 cr ditos (y ya no lo contamos para el Premium)
                   await PremiumManager.agregarCreditosIA(5);
-                  await PremiumManager.registrarAnuncioVistoParaPremium();
                   
                   if (mounted) {
                     setState(() {
@@ -220,7 +225,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                           const SizedBox(height: 20),
                           const Text('No hay Shorts disponibles', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
-                          const Text('Intenta con otra categoría o término de búsqueda.', style: TextStyle(color: AppTheme.textMuted)),
+                          const Text('Intenta con otra categor a o t rmino de b squeda.', style: TextStyle(color: AppTheme.textMuted)),
                         ],
                       ),
                     )
@@ -228,7 +233,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                       controller: _pageController,
                       scrollDirection: Axis.vertical,
                       itemCount: shortsFiltrados.length,
-                      // OPTIMIZACIÓN CRÍTICA: Mantiene la RAM baja al no renderizar widgets fantasma
+                      // OPTIMIZACI N CR TICA: Mantiene la RAM baja al no renderizar widgets fantasma
                       allowImplicitScrolling: false,
                       onPageChanged: (index) {
                         setState(() {
@@ -237,7 +242,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                           _isLiking = false;
                         });
                         
-                        // LÓGICA DE MONETIZACIÓN: Intersticial cada 10 shorts vistos
+                        // L GICA DE MONETIZACI N: Intersticial cada 10 shorts vistos
                         shortsVistos++;
                         if (shortsVistos % 10 == 0) {
                           AdManager.showInterstitial();
@@ -246,7 +251,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                       itemBuilder: (context, index) {
                         final short = shortsFiltrados[index];
                         final bool isActive = index == currentIndex;
-                        // NUEVA MAGIA: El video se precarga si está justo antes o justo después del actual
+                        // NUEVA MAGIA: El video se precarga si est  justo antes o justo despu s del actual
                         final bool isPreloading = (index == currentIndex - 1) || (index == currentIndex + 1);
 
                         return Stack(
@@ -258,6 +263,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                               isActive: isActive,
                               isPreloading: isPreloading,
                             ),
+
                             // GRADIENTE INFERIOR: Asegura que el texto blanco siempre se lea perfecto
                             Positioned.fill(
                               child: DecoratedBox(
@@ -267,7 +273,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                                       Colors.black.withValues(alpha: 0.5), // Arriba (Para el buscador)
                                       Colors.transparent,
                                       Colors.transparent,
-                                      Colors.black.withValues(alpha: 0.9), // Abajo (Para títulos y botones)
+                                      Colors.black.withValues(alpha: 0.9), // Abajo (Para t tulos y botones)
                                     ],
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
@@ -276,16 +282,17 @@ class _ShortsScreenState extends State<ShortsScreen> {
                                 ),
                               ),
                             ),
-                            // --- TEXTOS DEL VIDEO: TÍTULO, CATEGORÍA, FUENTE ---
+
+                            // --- TEXTOS DEL VIDEO: T TULO, CATEGOR A, FUENTE ---
                             Positioned(
-                              bottom: 110, // Separado del menú inferior
+                              bottom: 110, // Separado del men  inferior
                               left: 16, 
                               right: 84, // Deja espacio para los botones de la derecha
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Etiqueta de Categoría Neón
+                                  // Etiqueta de Categor a Ne n
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
@@ -300,7 +307,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                                   ),
                                   const SizedBox(height: 12),
                                   
-                                  // Título de la Noticia Viral
+                                  // T tulo de la Noticia Viral
                                   Text(
                                     short['titulo'] ?? '', 
                                     style: const TextStyle(
@@ -329,6 +336,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                                 ],
                               ),
                             ),
+
                             // --- BOTONES INTERACTIVOS LATERALES (IA, LIKE, SHARE) ---
                             Positioned(
                               bottom: 115, 
@@ -336,14 +344,14 @@ class _ShortsScreenState extends State<ShortsScreen> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // 🤖 BOTÓN IA CON VERIFICACIÓN DE CRÉDITOS
+                                  //   BOT N IA CON VERIFICACI N DE CR DITOS
                                   _buildSidebarButton(
                                     icon: PremiumManager.isPremium() || PremiumManager.getAiCredits() > 0 ? Icons.auto_awesome_rounded : Icons.bolt_rounded,
-                                    label: PremiumManager.isPremium() || PremiumManager.getAiCredits() > 0 ? 'Resumen' : 'Energía',
+                                    label: PremiumManager.isPremium() || PremiumManager.getAiCredits() > 0 ? 'Resumen' : 'Energ a',
                                     iconColor: PremiumManager.isPremium() || PremiumManager.getAiCredits() > 0 ? AppTheme.accentCyan : Colors.orange,
-                                    badgeText: PremiumManager.isPremium() ? '∞' : (PremiumManager.getAiCredits() > 0 ? PremiumManager.getAiCredits().toString() : null),
+                                    badgeText: PremiumManager.isPremium() ? ' ' : (PremiumManager.getAiCredits() > 0 ? PremiumManager.getAiCredits().toString() : null),
                                     onTap: () async {
-                                      // Intentamos gastar 1 crédito localmente
+                                      // Intentamos gastar 1 cr dito localmente
                                       bool tieneSaldo = await PremiumManager.usarCreditoIA();
                                       
                                       if (tieneSaldo) {
@@ -352,14 +360,14 @@ class _ShortsScreenState extends State<ShortsScreen> {
                                           mostrarResumenIA = !mostrarResumenIA;
                                         });
                                       } else {
-                                        // No tiene saldo, mostramos popup para ganar créditos
+                                        // No tiene saldo, mostramos popup para ganar cr ditos
                                         _mostrarDialogoSinCreditos();
                                       }
                                     },
                                   ),
                                   const SizedBox(height: 24),
                                   
-                                  // ❤️ BOTÓN ME GUSTA CON ANIMACIÓN
+                                  //   BOT N ME GUSTA CON ANIMACI N
                                   _buildSidebarButton(
                                     icon: _isLiking ? Icons.favorite_rounded : Icons.favorite_border_rounded, 
                                     label: 'Me Gusta', 
@@ -367,13 +375,13 @@ class _ShortsScreenState extends State<ShortsScreen> {
                                     onTap: () {
                                       setState(() => _isLiking = !_isLiking);
                                       if (_isLiking) {
-                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado en favoritos ❤️')));
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado en favoritos  ')));
                                       }
                                     }
                                   ),
                                   const SizedBox(height: 24),
                                   
-                                  // 🔗 BOTÓN COMPARTIR
+                                  //   BOT N COMPARTIR
                                   _buildSidebarButton(
                                     icon: Icons.share_rounded, 
                                     label: 'Compartir', 
@@ -402,7 +410,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Título Superior y Botón de Lupa
+                      // T tulo Superior y Bot n de Lupa
                       Row(
                         children: [
                           const Icon(Icons.play_circle_outline_rounded, color: AppTheme.accentCyan, size: 24),
@@ -454,7 +462,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                       ],
                       const SizedBox(height: 16),
                       
-                      // Cápsulas Horizontales de Categorías
+                      // C psulas Horizontales de Categor as
                       SizedBox(
                         height: 36,
                         child: ListView.builder(
@@ -590,7 +598,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
                 child: Icon(icon, color: iconColor, size: 26)
               ),
               
-              // Pequeño indicador de créditos encima del botón (si existe)
+              // Peque o indicador de cr ditos encima del bot n (si existe)
               if (badgeText != null)
                 Positioned(
                   top: -5,

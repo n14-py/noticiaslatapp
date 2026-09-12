@@ -10,6 +10,8 @@ import 'package:noticias_lat/core/theme/app_theme.dart';
 import 'package:noticias_lat/widgets/ai_summary_card.dart';
 import 'package:noticias_lat/core/services/premium_manager.dart';
 import 'package:noticias_lat/core/services/ad_manager.dart';
+import 'package:noticias_lat/widgets/short_video_player.dart';
+import 'package:share_plus/share_plus.dart';
 
 class DetalleNoticiaScreen extends StatefulWidget {
   final Map noticia;
@@ -22,14 +24,12 @@ class DetalleNoticiaScreen extends StatefulWidget {
 class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
   bool _isLoadingIA = false;
   String? _aiSummary;
-  
   bool _mostrarTarjeta = false;
   bool _modoSoloAudio = false;
-  
   List _recomendados = [];
   bool _isLoadingRecomendados = true;
 
-  // Lógica de Me Gusta local
+  // L gica de Me Gusta local
   bool _isLiked = false;
   late String _articleId;
 
@@ -39,10 +39,13 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
     _articleId = widget.noticia['_id'] ?? '';
     _checkIfLiked();
     _cargarRecomendados();
+    
+    // AQUÍ LLAMAMOS AL CONTADOR DE NOTICIAS PARA EL INTERSTICIAL CADA 3 VECES
+    AdManager.mostrarIntersticialCada3Noticias();
   }
 
   // ========================================================
-  // ❤️ LÓGICA DEL BOTÓN ME GUSTA
+  //  GICA DEL BOT N ME GUSTA
   // ========================================================
   Future<void> _checkIfLiked() async {
     final prefs = await SharedPreferences.getInstance();
@@ -61,7 +64,7 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isLiked ? 'Noticia guardada en favoritos ❤️' : 'Eliminada de favoritos', style: const TextStyle(color: Colors.white)),
+          content: Text(_isLiked ? 'Noticia guardada en favoritos  ' : 'Eliminada de favoritos', style: const TextStyle(color: Colors.white)),
           backgroundColor: AppTheme.bgDark,
           duration: const Duration(seconds: 2),
         ),
@@ -70,7 +73,7 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
   }
 
   // ========================================================
-  // 🤖 LÓGICA DE CRÉDITOS IA Y RECOMPENSAS
+  //  GICA DE CR DITOS IA Y RECOMPENSAS
   // ========================================================
   void _intentarResumirConIA() async {
     // 1. Verificamos si tiene saldo o es Premium
@@ -97,11 +100,11 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
           children: [
             Icon(Icons.bolt_rounded, color: AppTheme.accentCyan, size: 28),
             SizedBox(width: 8),
-            Text('¡Sin Energía IA!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(' Sin Energ a IA!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         content: const Text(
-          'Te has quedado sin usos de la Inteligencia Artificial.\n\n¿Quieres ver un video corto para recargar 5 usos inmediatamente?',
+          'Te has quedado sin usos de la Inteligencia Artificial.\n\n Quieres ver un video corto para recargar 5 usos inmediatamente?',
           style: TextStyle(color: AppTheme.textMuted, height: 1.4),
         ),
         actions: [
@@ -117,16 +120,17 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cargando anuncio...')));
               
               AdManager.showRewarded(
+                isForIA: true, // AQUÍ LE DECIMOS QUE USE EL ANUNCIO DE IA Y NO EL PREMIUM
                 onRewardEarned: () async {
                   await PremiumManager.agregarCreditosIA(5);
-                  await PremiumManager.registrarAnuncioVistoParaPremium();
+                  // Eliminamos el registro de anuncio para premium aquí, ya que este es solo para IA
                   if (mounted) {
                     setState(() {});
-                    _obtenerResumenIA(); // Le damos el resumen automáticamente como premio
+                    _obtenerResumenIA(); // Le damos el resumen autom ticamente como premio
                   }
                 },
                 onAdClosed: () {
-                  // Si cerró a la mitad, no pasa nada, solo actualizamos UI
+                  // Si cerr  a la mitad, no pasa nada, solo actualizamos UI
                   if (mounted) setState(() {});
                 }
               );
@@ -172,12 +176,11 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
   }
 
   // ========================================================
-  // 🌐 CARGAR NOTICIAS RECOMENDADAS
+  //   CARGAR NOTICIAS RECOMENDADAS
   // ========================================================
   Future<void> _cargarRecomendados() async {
     final categoria = widget.noticia['categoria'] ?? 'general';
     final url = Uri.parse('https://api.noticias.lat/api/articles?sitio=noticias.lat&limite=6&categoria=$categoria');
-
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -185,7 +188,6 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
         List articulos = data['articulos'] ?? [];
         articulos.removeWhere((item) => item['_id'] == widget.noticia['_id']);
         if (articulos.length > 5) articulos = articulos.sublist(0, 5);
-
         if (mounted) setState(() { _recomendados = articulos; _isLoadingRecomendados = false; });
       } else {
         if (mounted) setState(() => _isLoadingRecomendados = false);
@@ -195,18 +197,74 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
     }
   }
 
+
+
+// ========================================================
+  // LÓGICA PARA ABRIR EL VIDEO DENTRO DE LA APP (ESTILO SHORT)
+  // ========================================================
+  void _abrirVideo() {
+    final String? videoUrl = widget.noticia['videoUrl'];
+
+    if (videoUrl != null && videoUrl.toString().trim().isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            backgroundColor: Colors.black,
+            extendBodyBehindAppBar: true,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                // Sombra en el botón por si el video es muy blanco en esa zona
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, shadows: [Shadow(color: Colors.black, blurRadius: 10, offset: Offset(0, 2))]),                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            body: ShortVideoPlayer(
+              videoUrl: videoUrl,
+              isActive: true, // Lo forzamos a activo para que empiece a reproducir de inmediato
+            ),
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Este artículo no tiene un video nativo disponible.', style: TextStyle(color: Colors.white)),
+          backgroundColor: AppTheme.bgDark,
+        ),
+      );
+    }
+  }
+
+
+
+// ========================================================
+  // LÓGICA PARA COMPARTIR LA NOTICIA (DEEP LINKING)
+  // ========================================================
+  void _compartirNoticia() {
+    final String titulo = widget.noticia['titulo'] ?? 'Noticia de última hora';
+    // Construimos el enlace mágico que tu main.dart ya sabe leer
+    final String enlace = 'https://noticias.lat/articulo/$_articleId';
+
+    // Abrimos el menú nativo del celular para enviarlo por WhatsApp/Facebook
+    Share.share('¡Mira esta noticia en Noticias LAT!\n\n$titulo\n\n$enlace');
+  }
+
+
   @override
   Widget build(BuildContext context) {
     DateTime fechaObj = DateTime.tryParse(widget.noticia['fecha'] ?? '') ?? DateTime.now();
-    String fechaFormateada = DateFormat('dd MMMM, yyyy • HH:mm').format(fechaObj);
+    String fechaFormateada = DateFormat('dd MMMM, yyyy   HH:mm').format(fechaObj);
+
     final tieneAudio = widget.noticia['audioUrl'] != null && widget.noticia['audioUrl'].toString().isNotEmpty;
     final tieneVideo = widget.noticia['videoUrl'] != null || widget.noticia['youtubeId'] != null;
 
-    // Calcular la etiqueta del botón
+    // Calcular la etiqueta del bot n
     String aiLabel = 'Resumir con IA';
     if (!PremiumManager.isPremium()) {
       int creditos = PremiumManager.getAiCredits();
-      aiLabel = 'Resumir IA (⚡ $creditos)';
+      aiLabel = 'Resumir IA (  $creditos)';
     }
 
     return Scaffold(
@@ -237,6 +295,23 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
                   ),
                 ),
                 actions: [
+                  // --- NUEVO: BOTÓN DE COMPARTIR ---
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(50),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: IconButton(
+                          icon: const Icon(Icons.share_rounded, color: Colors.white, size: 22),
+                          onPressed: _compartirNoticia,
+                          style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.3)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // --- BOTÓN DE FAVORITOS (EL QUE YA TENÍAS) ---
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: ClipRRect(
@@ -284,9 +359,7 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
                           bottom: 20,
                           right: 20,
                           child: GestureDetector(
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Abriendo video completo...')));
-                            },
+                            onTap: _abrirVideo,
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
                               child: BackdropFilter(
@@ -335,8 +408,8 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
                             child: Text(widget.noticia['categoria']?.toString().toUpperCase() ?? 'NOTICIA', style: Theme.of(context).textTheme.labelSmall),
                           ),
                           const SizedBox(width: 8),
-                          // FUENTE DE LA NOTICIA AÑADIDA AQUÍ
-                          Text('•  ${widget.noticia['fuente']?.toString().toUpperCase() ?? 'WEB'}', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, fontWeight: FontWeight.bold)),
+                          // FUENTE DE LA NOTICIA A ADIDA AQU 
+                          Text('   ${widget.noticia['fuente']?.toString().toUpperCase() ?? 'WEB'}', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, fontWeight: FontWeight.bold)),
                           
                           const Spacer(),
                           const Icon(Icons.access_time_rounded, size: 16, color: AppTheme.textMuted),
@@ -355,7 +428,7 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
                 ),
               ),
 
-              // --- NUEVO: BANNER DE PUBLICIDAD AL FINAL DEL ARTÍCULO ---
+              // --- NUEVO: BANNER DE PUBLICIDAD AL FINAL DEL ART CULO ---
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20),
@@ -363,7 +436,7 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
                 ),
               ),
 
-              // 3. SECCIÓN DE RECOMENDADOS
+              // 3. SECCI N DE RECOMENDADOS
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -371,7 +444,7 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
                     children: [
                       Container(width: 4, height: 20, decoration: BoxDecoration(color: AppTheme.accentCyan, borderRadius: BorderRadius.circular(2))),
                       const SizedBox(width: 8),
-                      Text('TE PODRÍA INTERESAR', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18, letterSpacing: 1.2)),
+                      Text('TE PODR A INTERESAR', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18, letterSpacing: 1.2)),
                     ],
                   ),
                 ),
@@ -386,7 +459,7 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
                         childCount: _recomendados.length,
                       ),
                     ),
-
+              
               const SliverToBoxAdapter(child: SizedBox(height: 150)),
             ],
           ),
@@ -425,7 +498,7 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
                         const SizedBox(width: 16),
                       ],
                       
-                      // BOTÓN DE RESUMIR CON LÓGICA DE CRÉDITOS
+                      // BOT N DE RESUMIR CON L GICA DE CR DITOS
                       Expanded(
                         child: Container(
                           height: 60,
@@ -457,8 +530,7 @@ class _DetalleNoticiaScreenState extends State<DetalleNoticiaScreen> {
   Widget _buildRecomendadoCard(Map item, BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Mostramos intersticial de forma aleatoria al cambiar de noticia (lo maneja el AdManager si no es premium)
-        AdManager.showInterstitial();
+        // Ya no forzamos el anuncio aquí en cada clic, lo hace el initState al abrir la pantalla para que cuente 1 cada vez.
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DetalleNoticiaScreen(noticia: item)));
       },
       child: Container(
