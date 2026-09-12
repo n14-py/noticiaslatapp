@@ -6,6 +6,9 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:noticias_lat/core/theme/app_theme.dart';
+import 'package:noticias_lat/core/data/latam_countries.dart';
+import 'package:noticias_lat/core/layout/app_metrics.dart';
+import 'package:noticias_lat/core/services/user_prefs.dart';
 
 // --- IMPORTAMOS EL CEREBRO DE ANUNCIOS ---
 import 'package:noticias_lat/core/services/ad_manager.dart';
@@ -26,35 +29,13 @@ class _RadiosScreenState extends State<RadiosScreen> {
   bool isLoading = true;
 
   // Filtros activos
-  String paisSeleccionado = 'todos';
+  String paisSeleccionado = UserPrefs.instance.selectedCountryCode;
   String categoriaSeleccionada = 'todas';
   String searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
-  // ✅ LISTA COMPLETA DE PAÍSES PARA LA RADIO
-  final List<Map<String, String>> paises = [
-    {'name': 'Todos', 'code': 'todos'},
-    {'name': 'Argentina', 'code': 'ar'},
-    {'name': 'Bolivia', 'code': 'bo'},
-    {'name': 'Brasil', 'code': 'br'},
-    {'name': 'Chile', 'code': 'cl'},
-    {'name': 'Colombia', 'code': 'co'},
-    {'name': 'Costa Rica', 'code': 'cr'},
-    {'name': 'Cuba', 'code': 'cu'},
-    {'name': 'Ecuador', 'code': 'ec'},
-    {'name': 'El Salvador', 'code': 'sv'},
-    {'name': 'Guatemala', 'code': 'gt'},
-    {'name': 'Honduras', 'code': 'hn'},
-    {'name': 'México', 'code': 'mx'},
-    {'name': 'Nicaragua', 'code': 'ni'},
-    {'name': 'Panamá', 'code': 'pa'},
-    {'name': 'Paraguay', 'code': 'py'},
-    {'name': 'Perú', 'code': 'pe'},
-    {'name': 'Puerto Rico', 'code': 'pr'},
-    {'name': 'R. Dominicana', 'code': 'do'},
-    {'name': 'Uruguay', 'code': 'uy'},
-    {'name': 'Venezuela', 'code': 've'},
-  ];
+  List<Map<String, String>> get paises =>
+      LatamCountries.asFilterMaps(pinCode: UserPrefs.instance.pinnedCountryCode);
 
   final List<String> categorias = ['todas', 'politica', 'economia', 'deportes', 'tecnologia', 'salud', 'general'];
 
@@ -67,11 +48,14 @@ class _RadiosScreenState extends State<RadiosScreen> {
 
   // Contador para monetización
   int cambiosDeRadio = 0;
+  bool _pausedByAd = false;
 
   @override
   void initState() {
     super.initState();
     _cargarAudios();
+    UserPrefs.instance.addListener(_onUserPrefsChanged);
+    AdManager.isFullscreenAdVisible.addListener(_onFullscreenAdChanged);
 
     _audioPlayer.onPlayerStateChanged.listen((state) {
       if (mounted) setState(() => isPlaying = state == PlayerState.playing);
@@ -91,8 +75,34 @@ class _RadiosScreenState extends State<RadiosScreen> {
     });
   }
 
+  void _onUserPrefsChanged() {
+    final next = UserPrefs.instance.selectedCountryCode;
+    if (next != paisSeleccionado) {
+      paisSeleccionado = next;
+      if (todosLosAudios.isNotEmpty) {
+        _aplicarFiltros();
+      }
+    } else if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onFullscreenAdChanged() async {
+    if (AdManager.isFullscreenAdVisible.value) {
+      if (isPlaying) {
+        _pausedByAd = true;
+        await _audioPlayer.pause();
+      }
+    } else if (_pausedByAd) {
+      _pausedByAd = false;
+      await _audioPlayer.resume();
+    }
+  }
+
   @override
   void dispose() {
+    UserPrefs.instance.removeListener(_onUserPrefsChanged);
+    AdManager.isFullscreenAdVisible.removeListener(_onFullscreenAdChanged);
     _searchController.dispose();
     _audioPlayer.dispose();
     super.dispose();
@@ -162,6 +172,10 @@ class _RadiosScreenState extends State<RadiosScreen> {
         posicionActual = Duration.zero;
       });
       await _audioPlayer.play(UrlSource(audio['audioUrl']));
+      if (AdManager.isFullscreenAdVisible.value) {
+        _pausedByAd = true;
+        await _audioPlayer.pause();
+      }
     }
   }
 
@@ -387,7 +401,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
                         ),
 
               // Espacio extra al final para que el mini-reproductor no tape la última noticia
-              const SliverToBoxAdapter(child: SizedBox(height: 180)),
+              SliverToBoxAdapter(child: SizedBox(height: AppMetrics.navClearance(context) + 80)),
             ],
           ),
 
@@ -396,7 +410,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
           // ==========================================
           if (audioActual != null)
             Positioned(
-              bottom: 100, 
+              bottom: AppMetrics.navClearance(context), 
               left: 16,
               right: 16,
               child: ClipRRect(

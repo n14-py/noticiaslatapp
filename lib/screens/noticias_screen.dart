@@ -5,7 +5,11 @@ import 'dart:convert';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:noticias_lat/core/theme/app_theme.dart';
+import 'package:noticias_lat/core/data/latam_countries.dart';
+import 'package:noticias_lat/core/layout/app_metrics.dart';
+import 'package:noticias_lat/core/services/user_prefs.dart';
 import 'package:noticias_lat/screens/detalle_noticia_screen.dart';
 
 // --- IMPORTAMOS EL CEREBRO DE ANUNCIOS ---
@@ -30,38 +34,18 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   
   // Variables para el Buscador y Filtro
   String searchQuery = '';
-  String selectedCountry = 'todos';
+  String selectedCountry = UserPrefs.instance.selectedCountryCode;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  int _fetchGeneration = 0;
 
-  // ✅ LISTA COMPLETA DE TODOS LOS PAÍSES DE LA BD
-  final List<Map<String, String>> countries = [
-    {'name': 'Todos', 'code': 'todos'},
-    {'name': 'Argentina', 'code': 'ar'},
-    {'name': 'Bolivia', 'code': 'bo'},
-    {'name': 'Brasil', 'code': 'br'},
-    {'name': 'Chile', 'code': 'cl'},
-    {'name': 'Colombia', 'code': 'co'},
-    {'name': 'Costa Rica', 'code': 'cr'},
-    {'name': 'Cuba', 'code': 'cu'},
-    {'name': 'Ecuador', 'code': 'ec'},
-    {'name': 'El Salvador', 'code': 'sv'},
-    {'name': 'Guatemala', 'code': 'gt'},
-    {'name': 'Honduras', 'code': 'hn'},
-    {'name': 'México', 'code': 'mx'},
-    {'name': 'Nicaragua', 'code': 'ni'},
-    {'name': 'Panamá', 'code': 'pa'},
-    {'name': 'Paraguay', 'code': 'py'},
-    {'name': 'Perú', 'code': 'pe'},
-    {'name': 'Puerto Rico', 'code': 'pr'},
-    {'name': 'R. Dominicana', 'code': 'do'},
-    {'name': 'Uruguay', 'code': 'uy'},
-    {'name': 'Venezuela', 'code': 've'},
-  ];
+  List<Map<String, String>> get countries =>
+      LatamCountries.asFilterMaps(pinCode: UserPrefs.instance.pinnedCountryCode);
 
   @override
   void initState() {
     super.initState();
+    UserPrefs.instance.addListener(_onUserPrefsChanged);
     cargarNoticias(isRefresh: true);
     
     // Listener para la Paginación Infinita (Scroll hacia abajo)
@@ -72,8 +56,20 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     });
   }
 
+  void _onUserPrefsChanged() {
+    final next = UserPrefs.instance.selectedCountryCode;
+    if (next != selectedCountry) {
+      selectedCountry = next;
+      noticias.clear();
+      cargarNoticias(isRefresh: true);
+    } else if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
+    UserPrefs.instance.removeListener(_onUserPrefsChanged);
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -86,9 +82,8 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     if (isRefresh) {
       if (mounted) {
         setState(() {
-          isLoading = true;
+          isLoading = noticias.isEmpty;
           paginaActual = 1;
-          noticias.clear();
           hasMore = true;
         });
       }
@@ -97,18 +92,44 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
       paginaActual++;
     }
 
+    final int requestId = ++_fetchGeneration;
+
     String url = 'https://api.noticias.lat/api/articles?sitio=noticias.lat&limite=12&pagina=$paginaActual';
 
     if (searchQuery.isNotEmpty) url += '&query=$searchQuery';
     if (selectedCountry != 'todos') url += '&pais=$selectedCountry';
 
+    final prefs = await SharedPreferences.getInstance();
+    final cacheKey = 'noticias_json_cache_${selectedCountry}_${searchQuery}_p$paginaActual';
+
+    if (isRefresh && noticias.isEmpty) {
+      final cachedData = prefs.getString(cacheKey);
+      if (cachedData != null) {
+        try {
+          final data = json.decode(cachedData);
+          final List cachedArticulos = data['articulos'] ?? [];
+          if (mounted && cachedArticulos.isNotEmpty && requestId == _fetchGeneration) {
+            setState(() {
+              noticias = cachedArticulos;
+              isLoading = false;
+            });
+          }
+        } catch (e) {
+          debugPrint("Error leyendo caché de noticias: $e");
+        }
+      }
+    }
+
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
+        if (isRefresh) {
+          prefs.setString(cacheKey, response.body);
+        }
         final data = json.decode(response.body);
         final List nuevosArticulos = data['articulos'] ?? [];
         
-        if (mounted) {
+        if (mounted && requestId == _fetchGeneration) {
           setState(() {
             if (isRefresh) {
               noticias = nuevosArticulos;
@@ -121,21 +142,29 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
           });
         }
       } else {
-        if (mounted) setState(() { isLoading = false; isFetchingMore = false; });
+        if (mounted && requestId == _fetchGeneration) setState(() { isLoading = false; isFetchingMore = false; });
       }
     } catch (e) {
       debugPrint("Error al cargar noticias: $e");
-      if (mounted) setState(() { isLoading = false; isFetchingMore = false; });
+      if (mounted && requestId == _fetchGeneration) setState(() { isLoading = false; isFetchingMore = false; });
     }
   }
 
   void _onSearchChanged(String query) {
-    setState(() => searchQuery = query);
+    setState(() {
+      searchQuery = query;
+      noticias.clear();
+      isLoading = true;
+    });
     cargarNoticias(isRefresh: true);
   }
 
   void _onCountrySelected(String code) {
-    setState(() => selectedCountry = code);
+    setState(() {
+      selectedCountry = code;
+      noticias.clear();
+      isLoading = true;
+    });
     cargarNoticias(isRefresh: true);
   }
 
@@ -144,6 +173,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent, 
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // ==========================================
@@ -250,7 +280,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
                           backgroundColor: AppTheme.cardDark,
                           child: ListView.builder(
                             controller: _scrollController,
-                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 120), // 120 para que la navbar flotante no tape
+                            padding: EdgeInsets.fromLTRB(16, 10, 16, AppMetrics.navClearance(context)),
                             physics: const BouncingScrollPhysics(),
                             itemCount: _calculateItemCount(),
                             // OPTIMIZACIÓN: Desactiva el mantenimiento en memoria de las tarjetas que ya no se ven al scrollear

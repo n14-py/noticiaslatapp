@@ -7,6 +7,15 @@ class AdManager {
   //   Tus IDs Oficiales de AdMob
   static const String bannerAdUnitId = 'ca-app-pub-5461370198299696/8176816601';
   static const String interstitialAdUnitId = 'ca-app-pub-5461370198299696/7578050809';
+
+  /// true mientras un anuncio a pantalla completa cubre la app (pausa shorts/audio).
+  static final ValueNotifier<bool> isFullscreenAdVisible = ValueNotifier<bool>(false);
+
+  static void _setFullscreenAdVisible(bool visible) {
+    if (isFullscreenAdVisible.value != visible) {
+      isFullscreenAdVisible.value = visible;
+    }
+  }
   
   // Separamos los IDs de recompensados
   static const String rewardedAdUnitIdPremium = 'ca-app-pub-5461370198299696/3638805797';
@@ -45,15 +54,21 @@ class AdManager {
   static void showInterstitial() {
     if (PremiumManager.isPremium() || _interstitialAd == null) return;
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (ad) {
+        _setFullscreenAdVisible(true);
+      },
       onAdDismissedFullScreenContent: (ad) {
+        _setFullscreenAdVisible(false);
         ad.dispose();
         loadInterstitial(); // Recarga autom tica para la siguiente vez
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
+        _setFullscreenAdVisible(false);
         ad.dispose();
         loadInterstitial();
       },
     );
+    _setFullscreenAdVisible(true);
     _interstitialAd!.show();
     _interstitialAd = null;
   }
@@ -120,7 +135,11 @@ class AdManager {
     }
     
     adToShow.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (ad) {
+        _setFullscreenAdVisible(true);
+      },
       onAdDismissedFullScreenContent: (ad) {
+        _setFullscreenAdVisible(false);
         ad.dispose();
         if (isForIA) {
           _loadRewardedIA(); // Recarga el video de IA
@@ -130,6 +149,7 @@ class AdManager {
         onAdClosed();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
+        _setFullscreenAdVisible(false);
         ad.dispose();
         if (isForIA) {
           _loadRewardedIA();
@@ -140,6 +160,7 @@ class AdManager {
       },
     );
     
+    _setFullscreenAdVisible(true);
     adToShow.show(
       onUserEarnedReward: (ad, reward) {
         onRewardEarned(); // Da los cr ditos correspondientes
