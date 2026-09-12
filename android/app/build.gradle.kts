@@ -37,7 +37,7 @@ android {
         applicationId = "com.noticiaslat.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 18
+        versionCode = 19
         versionName = "1.0.18"
     }
 

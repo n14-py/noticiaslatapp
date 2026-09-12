@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'dart:async';
 
 import 'package:noticias_lat/core/theme/app_theme.dart';
+import 'package:noticias_lat/core/app_keys.dart';
 import 'package:noticias_lat/screens/main_shell.dart';
 import 'package:noticias_lat/screens/detalle_noticia_screen.dart';
 import 'package:noticias_lat/core/services/premium_manager.dart';
@@ -23,9 +24,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   debugPrint("Manejando mensaje en segundo plano: ${message.messageId}");
 }
-
-// Clave global para poder navegar a otras pantallas desde notificaciones/enlaces sin context
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   // Aseguramos que Flutter est  listo antes de arrancar los plugins
@@ -46,10 +44,13 @@ void main() async {
   // 2. Inicializamos Google AdMob
   await MobileAds.instance.initialize();
   
-  // 3. Dejamos cargando un anuncio intersticial y un reward en segundo plano
-// 3. Dejamos cargando un anuncio intersticial y un reward en segundo plano
-  AdManager.loadInterstitial();
-  AdManager.loadRewarded();
+  // 3. Anuncios solo DESPUÉS de la bienvenida (si es el primer uso, no se muestran)
+  if (UserPrefs.instance.hasCompletedWelcome) {
+    AdManager.loadInterstitial();
+    AdManager.loadRewarded();
+  } else {
+    AdManager.suppressAds();
+  }
 
   // 4. Inicializamos la pasarela de pagos (Google Play / App Store)
   await BillingManager.init();
@@ -214,7 +215,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     
     // Si la app vuelve a estar activa (el usuario regres  a la app)
     if (state == AppLifecycleState.resumed) {
-      AdManager.mostrarIntersticialDeBienvenida();
+      if (UserPrefs.instance.hasCompletedWelcome) {
+        AdManager.mostrarIntersticialDeBienvenida();
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 name: noticias_lat
 description: "A premium news application."
 publish_to: 'none'
-version: 1.0.17+18
+version: 1.0.18+19
 
 environment:
   sdk: '>=3.3.0 <4.0.0'

@@ -12,6 +12,7 @@ import 'package:noticias_lat/core/services/user_prefs.dart';
 
 // --- IMPORTAMOS EL CEREBRO DE ANUNCIOS ---
 import 'package:noticias_lat/core/services/ad_manager.dart';
+import 'package:noticias_lat/core/services/json_feed_cache.dart';
 
 class RadiosScreen extends StatefulWidget {
   const RadiosScreen({super.key});
@@ -112,26 +113,36 @@ class _RadiosScreenState extends State<RadiosScreen> {
   // 🌐 CARGAR AUDIOS DE LA API
   // ==========================================
   Future<void> _cargarAudios() async {
-    setState(() => isLoading = true);
+    final cachedData = await JsonFeedCache.read(JsonFeedCache.radiosKey);
+
+    if (cachedData != null) {
+      _procesarListaDeAudios(cachedData);
+    } else if (mounted) {
+      setState(() => isLoading = true);
+    }
+
     const url = 'https://api.noticias.lat/api/articles?sitio=noticias.lat&limite=200';
 
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List articulos = data['articulos'] ?? [];
-
-        // Filtramos solo los que tienen audio url
-        todosLosAudios = articulos.where((a) => a['audioUrl'] != null && a['audioUrl'].toString().isNotEmpty).toList();
-        
-        _aplicarFiltros();
+        await JsonFeedCache.write(JsonFeedCache.radiosKey, response.body);
+        _procesarListaDeAudios(response.body);
       } else {
-        if (mounted) setState(() => isLoading = false);
+        if (mounted && cachedData == null) setState(() => isLoading = false);
       }
     } catch (e) {
       debugPrint("Error cargando audios: $e");
-      if (mounted) setState(() => isLoading = false);
+      if (mounted && cachedData == null) setState(() => isLoading = false);
     }
+  }
+
+  void _procesarListaDeAudios(String rawJson) {
+    if (!mounted) return;
+    final data = json.decode(rawJson);
+    final List articulos = data['articulos'] ?? [];
+    todosLosAudios = articulos.where((a) => a['audioUrl'] != null && a['audioUrl'].toString().isNotEmpty).toList();
+    _aplicarFiltros();
   }
 
   void _aplicarFiltros() {

@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:ui';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:noticias_lat/core/theme/app_theme.dart';
-import 'package:noticias_lat/core/layout/app_metrics.dart';
+import 'package:noticias_lat/core/services/json_feed_cache.dart';
 import 'package:noticias_lat/widgets/short_video_player.dart';
 
 // --- IMPORTAMOS LOS SERVICIOS DE MONETIZACI N Y PREMIUM ---
@@ -72,10 +71,9 @@ class _ShortsScreenState extends State<ShortsScreen> {
   //   CARGAR SHORTS (CON CACH  JSON INSTANT NEO)
   // ========================================================
   Future<void> _cargarShorts() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? cachedData = prefs.getString('shorts_json_cache');
+    final String? cachedData = await JsonFeedCache.read(JsonFeedCache.shortsKey);
 
-    // 1. Si hay cach , cargamos AL INSTANTE
+    // 1. Si hay caché, cargamos AL INSTANTE (igual que actualizacion 17)
     if (cachedData != null) {
       final data = json.decode(cachedData);
       _procesarListaDeArticulos(data['articulos'] ?? []);
@@ -90,8 +88,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
-        // Guardamos el nuevo JSON en el celular para la pr xima vez
-        prefs.setString('shorts_json_cache', response.body);
+        await JsonFeedCache.write(JsonFeedCache.shortsKey, response.body);
         
         final data = json.decode(response.body);
         _procesarListaDeArticulos(data['articulos'] ?? []);
@@ -286,7 +283,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
 
                             // --- TEXTOS DEL VIDEO: T TULO, CATEGOR A, FUENTE ---
                             Positioned(
-                              bottom: AppMetrics.navClearance(context),
+                              bottom: 110, // Separado del men  inferior
                               left: 16, 
                               right: 84, // Deja espacio para los botones de la derecha
                               child: Column(
@@ -340,7 +337,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
 
                             // --- BOTONES INTERACTIVOS LATERALES (IA, LIKE, SHARE) ---
                             Positioned(
-                              bottom: AppMetrics.navClearance(context) + 5, 
+                              bottom: 115, 
                               right: 16,
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
@@ -406,7 +403,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                 child: Container(
-                  padding: EdgeInsets.fromLTRB(16, AppMetrics.statusBarPadding(context), 16, 16),
+                  padding: const EdgeInsets.fromLTRB(16, 50, 16, 16),
                   color: Colors.black.withValues(alpha: 0.4),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -516,7 +513,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
           // ========================================================
           if (mostrarResumenIA)
             Positioned(
-              bottom: AppMetrics.navClearance(context) + 10,
+              bottom: 120, // Aparece justo por encima de los textos del video
               left: 16, 
               right: 84, // No tapa los botones laterales
               child: ClipRRect(
