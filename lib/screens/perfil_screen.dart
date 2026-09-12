@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:noticias_lat/core/theme/app_theme.dart';
+import 'package:noticias_lat/core/layout/app_metrics.dart';
 import 'package:noticias_lat/core/services/premium_manager.dart';
 import 'package:noticias_lat/core/services/ad_manager.dart';
 import 'package:noticias_lat/core/services/billing_manager.dart';
@@ -175,7 +176,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     }
                   ),
                   
-                  const SizedBox(height: 120), // Espacio para la barra de navegaci n flotante inferior
+                  SizedBox(height: AppMetrics.navClearance(context)),
                 ],
               ),
             ),

@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import 'package:noticias_lat/core/services/ad_manager.dart';
 import 'package:noticias_lat/core/theme/app_theme.dart';
 
 class ShortVideoPlayer extends StatefulWidget {
@@ -27,7 +28,8 @@ class _ShortVideoPlayerState extends State<ShortVideoPlayer> with SingleTickerPr
   bool _isInitializing = false; 
   
   double _currentVisibility = 0.0; 
-
+  bool _pausedByAd = false;
+  
   late AnimationController _playPauseAnimController;
   bool _showPlayPauseIcon = false;
 
@@ -38,11 +40,16 @@ class _ShortVideoPlayerState extends State<ShortVideoPlayer> with SingleTickerPr
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
+    AdManager.isFullscreenAdVisible.addListener(_onFullscreenAdChanged);
 
     // OPTIMIZACIÓN EXTREMA: Solo descargamos el video si está en pantalla O si es el video que sigue
     if (widget.isActive || widget.isPreloading) {
       _initializeVideo();
     }
+  }
+
+  void _onFullscreenAdChanged() {
+    _checkPlayOrPause();
   }
 
   // Inicializa y descarga el video en segundo plano
@@ -117,6 +124,7 @@ class _ShortVideoPlayerState extends State<ShortVideoPlayer> with SingleTickerPr
 
   @override
   void dispose() {
+    AdManager.isFullscreenAdVisible.removeListener(_onFullscreenAdChanged);
     _disposeVideo();
     _playPauseAnimController.dispose();
     super.dispose();
@@ -124,12 +132,31 @@ class _ShortVideoPlayerState extends State<ShortVideoPlayer> with SingleTickerPr
 
   void _checkPlayOrPause() {
     if (!mounted || !_isInitialized || _controller == null) return;
-    
-    // Solo reproduce si es el video activo Y la pantalla está visible
+
+    if (AdManager.isFullscreenAdVisible.value) {
+      if (_controller!.value.isPlaying) {
+        _pausedByAd = true;
+        _controller!.pause();
+        setState(() => _isPlaying = false);
+      }
+      return;
+    }
+
+    if (_pausedByAd) {
+      _pausedByAd = false;
+      if (_currentVisibility > 0.6 && widget.isActive) {
+        _controller!.play();
+        setState(() => _isPlaying = true);
+      }
+      return;
+    }
     if (_currentVisibility > 0.6 && widget.isActive) {
       if (!_controller!.value.isPlaying) {
         _controller!.play();
-        setState(() => _isPlaying = true);
+        setState(() {
+          _isPlaying = true;
+          _pausedByAd = false;
+        });
       }
     } else {
       // Pausa obligatoria
@@ -137,6 +164,7 @@ class _ShortVideoPlayerState extends State<ShortVideoPlayer> with SingleTickerPr
         _controller!.pause();
         setState(() => _isPlaying = false);
       }
+      _pausedByAd = false;
     }
   }
 

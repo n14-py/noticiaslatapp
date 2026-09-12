@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:noticias_lat/core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:noticias_lat/core/services/ad_manager.dart';
 
 class AiSummaryCard extends StatefulWidget {
   final String resumen;
@@ -29,10 +30,12 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
   Duration duracionTotal = Duration.zero;
   Duration posicionActual = Duration.zero;
   bool isAudioLoading = false;
+  bool _pausedByAd = false;
 
   @override
   void initState() {
     super.initState();
+    AdManager.isFullscreenAdVisible.addListener(_onFullscreenAdChanged);
     if (widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {
       _setupAudio();
       // Autoplay si se abre en modo solo audio
@@ -67,8 +70,21 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
     });
   }
 
+  void _onFullscreenAdChanged() async {
+    if (AdManager.isFullscreenAdVisible.value) {
+      if (isPlaying) {
+        _pausedByAd = true;
+        await _audioPlayer.pause();
+      }
+    } else if (_pausedByAd) {
+      _pausedByAd = false;
+      await _audioPlayer.resume();
+    }
+  }
+
   @override
   void dispose() {
+    AdManager.isFullscreenAdVisible.removeListener(_onFullscreenAdChanged);
     _audioPlayer.dispose();
     super.dispose();
   }

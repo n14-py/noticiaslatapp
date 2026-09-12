@@ -15,6 +15,7 @@ import 'package:noticias_lat/screens/detalle_noticia_screen.dart';
 import 'package:noticias_lat/core/services/premium_manager.dart';
 import 'package:noticias_lat/core/services/ad_manager.dart';
 import 'package:noticias_lat/core/services/billing_manager.dart';
+import 'package:noticias_lat/core/services/user_prefs.dart';
 
 // Manejador de notificaciones cuando la app est  cerrada o en segundo plano
 @pragma('vm:entry-point')
@@ -38,8 +39,9 @@ void main() async {
     debugPrint("Advertencia: Firebase requiere configuraci n nativa (google-services.json). Error: $e");
   }
   
-  // 1. Inicializamos la Base de Datos Local (Premium y Cr ditos)
+  // 1. Inicializamos la Base de Datos Local (Premium, cr ditos y primer uso)
   await PremiumManager.init();
+  await UserPrefs.instance.init();
   
   // 2. Inicializamos Google AdMob
   await MobileAds.instance.initialize();
@@ -52,14 +54,14 @@ void main() async {
   // 4. Inicializamos la pasarela de pagos (Google Play / App Store)
   await BillingManager.init();
 
-  // Fijamos la orientación vertical y los colores de la barra de estado
-  // Fijamos la orientaci n vertical y los colores de la barra de estado
+  // Pantalla de borde a borde (Android 15 / SDK 35) sin APIs de barra de sistema obsoletas.
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: Colors.black,
     systemNavigationBarIconBrightness: Brightness.light,
+    systemNavigationBarContrastEnforced: false,
+    systemStatusBarContrastEnforced: false,
   ));
   
   runApp(const MyApp());

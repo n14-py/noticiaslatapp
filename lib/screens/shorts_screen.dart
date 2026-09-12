@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:ui';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:noticias_lat/core/theme/app_theme.dart';
+import 'package:noticias_lat/core/layout/app_metrics.dart';
 import 'package:noticias_lat/widgets/short_video_player.dart';
 
 // --- IMPORTAMOS LOS SERVICIOS DE MONETIZACI N Y PREMIUM ---
@@ -285,7 +286,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
 
                             // --- TEXTOS DEL VIDEO: T TULO, CATEGOR A, FUENTE ---
                             Positioned(
-                              bottom: 110, // Separado del men  inferior
+                              bottom: AppMetrics.navClearance(context),
                               left: 16, 
                               right: 84, // Deja espacio para los botones de la derecha
                               child: Column(
@@ -339,7 +340,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
 
                             // --- BOTONES INTERACTIVOS LATERALES (IA, LIKE, SHARE) ---
                             Positioned(
-                              bottom: 115, 
+                              bottom: AppMetrics.navClearance(context) + 5, 
                               right: 16,
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
@@ -405,7 +406,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                 child: Container(
-                  padding: const EdgeInsets.fromLTRB(16, 50, 16, 16),
+                  padding: EdgeInsets.fromLTRB(16, AppMetrics.statusBarPadding(context), 16, 16),
                   color: Colors.black.withValues(alpha: 0.4),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -515,7 +516,7 @@ class _ShortsScreenState extends State<ShortsScreen> {
           // ========================================================
           if (mostrarResumenIA)
             Positioned(
-              bottom: 120, // Aparece justo por encima de los textos del video
+              bottom: AppMetrics.navClearance(context) + 10,
               left: 16, 
               right: 84, // No tapa los botones laterales
               child: ClipRRect(
