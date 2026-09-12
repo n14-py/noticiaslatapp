@@ -1,7 +1,10 @@
 // Archivo: noticias_lat/lib/core/services/ad_manager.dart
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:noticias_lat/core/app_keys.dart';
 import 'package:noticias_lat/core/services/premium_manager.dart';
+import 'package:noticias_lat/core/services/user_prefs.dart';
+import 'package:noticias_lat/widgets/premium_promo_dialog.dart';
 
 class AdManager {
   //   Tus IDs Oficiales de AdMob
@@ -24,19 +27,38 @@ class AdManager {
   static InterstitialAd? _interstitialAd;
   static RewardedAd? _rewardedAdPremium;
   static RewardedAd? _rewardedAdIA;
+  static bool _adsAllowed = true;
+  static bool _promoInFlight = false;
+
+  static void suppressAds() {
+    _adsAllowed = false;
+  }
+
+  static void enableAdsAfterWelcome() {
+    _adsAllowed = true;
+    loadInterstitial();
+    loadRewarded();
+  }
+
+  static bool _canShowAds() {
+    if (!_adsAllowed) return false;
+    if (PremiumManager.isPremium()) return false;
+    if (!UserPrefs.instance.hasCompletedWelcome) return false;
+    return true;
+  }
 
   // Contador para las noticias leídas
   static int _noticiasLeidas = 0;
 
   // 1  ANUNCIO BANNER (Sin "context" para no romper tus otras pantallas)
   static Widget getBannerAdWidget() {
-    if (PremiumManager.isPremium()) return const SizedBox.shrink();
+    if (!_canShowAds()) return const SizedBox.shrink();
     return const AdaptiveBannerAdWidget();
   }
 
   // 2  ANUNCIO INTERSTICIAL (Pantalla Completa)
   static void loadInterstitial() {
-    if (PremiumManager.isPremium()) return;
+    if (!_canShowAds()) return;
     InterstitialAd.load(
       adUnitId: interstitialAdUnitId,
       request: const AdRequest(),
@@ -52,7 +74,7 @@ class AdManager {
   }
 
   static void showInterstitial() {
-    if (PremiumManager.isPremium() || _interstitialAd == null) return;
+    if (!_canShowAds() || _interstitialAd == null) return;
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (ad) {
         _setFullscreenAdVisible(true);
@@ -60,7 +82,8 @@ class AdManager {
       onAdDismissedFullScreenContent: (ad) {
         _setFullscreenAdVisible(false);
         ad.dispose();
-        loadInterstitial(); // Recarga autom tica para la siguiente vez
+        loadInterstitial();
+        _mostrarPromoPremium();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         _setFullscreenAdVisible(false);
@@ -71,6 +94,21 @@ class AdManager {
     _setFullscreenAdVisible(true);
     _interstitialAd!.show();
     _interstitialAd = null;
+  }
+
+  static void _mostrarPromoPremium() {
+    if (PremiumManager.isPremium() || _promoInFlight) return;
+    if (!UserPrefs.instance.hasCompletedWelcome) return;
+    final context = navigatorKey.currentContext;
+    if (context == null || !context.mounted) return;
+    _promoInFlight = true;
+    Future<void>.delayed(const Duration(milliseconds: 280), () async {
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null && ctx.mounted) {
+        await showPremiumPromoDialog(ctx);
+      }
+      _promoInFlight = false;
+    });
   }
 
   // Nuevo método: Intersticial cada 3 noticias

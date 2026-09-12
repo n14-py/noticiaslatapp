@@ -38,22 +38,16 @@ class _MainShellState extends State<MainShell> {
         extendBody: true, 
         
         // IndexedStack mantiene el estado de las pantallas para que no se recarguen al cambiar de pestaña
-        body: Stack(
-          children: [
-            IndexedStack(
+        body: _showWelcome
+          ? WelcomeScreen(
+              onFinished: () {
+                if (mounted) setState(() => _showWelcome = false);
+              },
+            )
+          : IndexedStack(
               index: _selectedIndex,
               children: _pages,
             ),
-            if (_showWelcome)
-              Positioned.fill(
-                child: WelcomeScreen(
-                  onFinished: () {
-                    if (mounted) setState(() => _showWelcome = false);
-                  },
-                ),
-              ),
-          ],
-        ),
         
         bottomNavigationBar: _showWelcome ? null : _buildPremiumFloatingNavBar(),
       ),
